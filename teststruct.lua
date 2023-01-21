@@ -1,6 +1,6 @@
 #!/usr/bin/env lua5.1
 
--- $Id: teststruct.lua,v 1.4 2012/07/04 18:54:29 roberto Exp $
+-- $Id: teststruct.lua,v 1.8 2018/05/16 11:03:52 roberto Exp $
 
 -- load library
 local lib = require"struct"
@@ -167,7 +167,7 @@ assert(a == -2 and b == 10 and c == -10 and d == 250)
 
 
 a, b, c, d = lib.unpack(">lBxxH", lib.pack(">lBxxH", -20, 10, 250))
-assert(a == -20 and b == 10 and c == 250 and d == 10)
+assert(a == -20 and b == 10 and c == 250 and d == lib.size(">lBxxH") + 1)
 
 a,b,c,d,e = lib.unpack(">fdfH",
                   '000'..lib.pack(">fdfH", 3.5, -24e-5, 200.5, 30000),
@@ -230,6 +230,18 @@ a, i = lib.unpack("s", x, i)
 assert(a == "bye")
 
 
+-- bug in 0.2  (arithmetic overflow with a "negative" size for 'c0')
+assert(not pcall(lib.unpack, 'bc0', '\255'))
+
+-- bug in 0.2  (arithmetic overflow with a negative initial position)
+assert(not pcall(lib.unpack, 'i', 'ffffffff', -10))
+
+-- no returns
+do
+  assert(lib.pack('>!') == '')
+  local p, x = lib.unpack('>!', '')
+  assert(p == 1 and x == nil)    -- return only the new position
+end
 
 -- test for weird conditions
 assert(lib.pack(">>>h <!!!<h", 10, 10) == string.char(0, 10, 10, 0))
@@ -239,6 +251,7 @@ assert(lib.pack("") == "")
 assert(lib.pack("   ") == "")
 assert(lib.pack(">>><<<!!") == "")
 assert(not pcall(lib.unpack, "c0", "alo"))
+assert(not pcall(lib.unpack, "c0", "alo", 2))
 assert(not pcall(lib.unpack, "s", "alo"))
 assert(lib.unpack("s", "alo\0") == "alo")
 assert(not pcall(lib.pack, "c4", "alo"))
